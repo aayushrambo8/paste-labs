@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ccff00" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ccff00" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="9.600000000000001"/>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="192" height="192" fill="#090412"/>
+  <!-- Glow halo -->
+  <circle cx="96" cy="96" r="80.64" fill="url(#glow)"/>
+  <!-- Bolt glow layer -->
+  <polygon points="119.52,43.20 89.28,101.28 106.08,101.28 72.48,148.80 102.72,90.72 85.92,90.72" fill="#ccff00" opacity="0.4" filter="url(#blur)"/>
+  <!-- Bolt solid -->
+  <polygon points="119.52,43.20 89.28,101.28 106.08,101.28 72.48,148.80 102.72,90.72 85.92,90.72" fill="#ccff00"/>
+</svg>
