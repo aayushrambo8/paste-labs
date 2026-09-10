@@ -44,7 +44,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="relative flex justify-center items-center min-h-screen p-4 md:p-5">
+    <div className="relative flex justify-center items-center min-h-screen p-4 md:p-5 overflow-x-hidden w-full">
       <div className="absolute top-4 right-4 z-20">
         <GitHubDropdown />
       </div>

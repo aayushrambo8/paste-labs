@@ -287,7 +287,7 @@ export default function Session() {
 
   return (
     <div 
-      className="min-h-screen flex flex-col relative"
+      className="min-h-screen flex flex-col relative overflow-x-hidden w-full"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
