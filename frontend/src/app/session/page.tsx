@@ -93,7 +93,17 @@ export default function Session() {
     };
   }, [sessionId]);
 
+  const BROADCAST_PAYLOAD_LIMIT = 30 * 1024; // 30KB — Supabase Realtime hard limit is ~32KB
+
   const broadcastItem = useCallback((newItem: ItemType) => {
+    const payloadSize = new TextEncoder().encode(JSON.stringify(newItem)).length;
+    if (payloadSize > BROADCAST_PAYLOAD_LIMIT) {
+      console.error(
+        `Broadcast payload too large (${(payloadSize / 1024).toFixed(1)} KB). ` +
+        `Supabase Realtime limit is ~32 KB. Item will NOT sync to other devices.`
+      );
+      return;
+    }
     channelRef.current?.send({
       type: 'broadcast',
       event: 'clipboard',
@@ -129,51 +139,6 @@ export default function Session() {
     broadcastItem(newItem);
   }, [broadcastItem]);
 
-  const fileToDataUrl = (file: Blob): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const compressImageForBroadcast = (file: Blob, maxDimension = 1200, quality = 0.75): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          let width = img.width;
-          let height = img.height;
-          if (width > maxDimension || height > maxDimension) {
-            if (width > height) {
-              height = Math.round((height * maxDimension) / width);
-              width = maxDimension;
-            } else {
-              width = Math.round((width * maxDimension) / height);
-              height = maxDimension;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            reject(new Error('Failed to get 2D context'));
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressedDataUrl);
-        };
-        img.onerror = (err) => reject(err);
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(file);
-    });
-  };
 
   const processFile = useCallback(async (file: File) => {
     if (!sessionId) return;
@@ -190,16 +155,20 @@ export default function Session() {
     try {
       contentUrl = await uploadToStorage(file, file.name || 'file');
     } catch (err: any) {
-      console.warn('Supabase storage upload failed, attempting compressed/data URL fallback:', err);
-      try {
-        if (isImage) {
-          contentUrl = await compressImageForBroadcast(file);
-        } else {
-          contentUrl = await fileToDataUrl(file);
-        }
-      } catch (fallbackErr) {
-        console.error('Failed to convert file to Data URL fallback:', fallbackErr);
-      }
+      // Storage upload failed — do NOT fall back to data URLs.
+      // Data URLs easily exceed Supabase Realtime's ~32 KB broadcast payload
+      // limit, causing the message to be silently dropped on other devices.
+      // The sender would see the item locally but no other device would receive it.
+      console.error('Supabase storage upload failed:', err);
+      const errMsg = err?.message || 'Unknown error';
+      alert(
+        `Failed to upload file to storage: ${errMsg}\n\n` +
+        `Please make sure the "clipboard-uploads" bucket exists in your Supabase project ` +
+        `and the storage RLS policies allow public uploads (run supabase_storage_setup.sql).`
+      );
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
     }
 
     if (contentUrl) {
@@ -213,7 +182,7 @@ export default function Session() {
       setItems((prev) => [newItem, ...prev]);
       broadcastItem(newItem);
     } else {
-      alert('Failed to process file for sharing. Please check your file and try again.');
+      alert('Failed to get a public URL for the uploaded file. Please try again.');
     }
 
     setIsUploading(false);
